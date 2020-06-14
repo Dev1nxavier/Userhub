@@ -1,62 +1,115 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 
 import {
-    Header,
-    UserPosts
+  BrowserRouter as Router,
+  Route,
+  Switch,
+  Redirect
+} from 'react-router-dom';
+
+import {
+  Header,
+  UserPosts,
+  UserTodos
 } from './components';
-import { 
-    getUsers,
-    getPostsByUser
- } from './api';
+
+import {
+  getUsers,
+  getPostsByUser,
+  getTodosByUser
+} from './api';
+
+// NEW
+import {
+  getCurrentUser
+} from './auth';
 
 const App = () => {
+  const [userList, setUserList] = useState([]);
 
-    const [userList, setUserList] = useState([]);
-    const [currentUser, setCurrentUser] = useState(null);
-    const [userPosts, setUserPosts] = useState([]);
+  // MODIFIED
+  const [currentUser, setCurrentUser] = useState(getCurrentUser());
 
-    // this is new
-    useEffect(() => {
-      getUsers()
-        .then(users => {
-          setUserList(users)
-        })
-        .catch(error => {
-          // something something errors
-        });
-    }, []);
+  const [userPosts, setUserPosts] = useState([]);
+  const [userTodos, setUserTodos] = useState([]);
 
-    useEffect(()=>{
-        if(!currentUser){
-            setUserPosts([]);
-            return; 
-        }
-    
-    getPostsByUser(currentUser.id)
-        .then(posts=>{
-            setUserPosts(posts);
-        })
-        .catch(error=>{
-            //something?
-        });
-    }, [currentUser]);
+  useEffect(() => {
+    getUsers()
+      .then(users => {
+        setUserList(users)
+      })
+      .catch(error => {
+        // something something errors
+      });
+  }, []);
 
-  return (
-    <div id="App">
-    <Header
-        userList={ userList }
-        currentUser={ currentUser }
-        setCurrentUser={ setCurrentUser } />
-    {
-        currentUser
-        ? <UserPosts
-            userPosts={ userPosts }
-            currentUser={ currentUser } />
-        : null
+  useEffect(() => {
+    if (!currentUser) {
+      setUserPosts([]);
+      setUserTodos([]);
+      return;
     }
 
-    </div>
+    getPostsByUser(currentUser.id)
+      .then(posts => {
+        setUserPosts(posts);
+      })
+      .catch(error => {
+        // something something errors
+      });
+
+    getTodosByUser(currentUser.id)
+      .then(todos => {
+        setUserTodos(todos);
+      })
+      .catch(error => {
+        // something something errors
+      });
+  }, [currentUser]);
+
+  return (
+    <Router>
+      <div id="App">
+        <Header
+          userList={ userList }
+          currentUser={ currentUser }
+          setCurrentUser={ setCurrentUser } />
+        {
+          currentUser
+          ? <>
+              <Switch>
+                <Route path="/posts">
+                  <UserPosts
+                    userPosts={ userPosts }
+                    currentUser={ currentUser } />
+                </Route>
+                <Route path="/todos">
+                  <UserTodos
+                    userTodos={ userTodos }
+                    currentUser={ currentUser } />
+                </Route>
+                <Route exact path="/">
+                  <h2 style={{
+                    padding: ".5em"
+                  }}>Welcome, { currentUser.username }!</h2>
+                </Route>
+                <Redirect to="/" />
+              </Switch>
+            </>
+          : <>
+              <Switch>
+                <Route exact path="/">
+                  <h2 style={{
+                    padding: ".5em"
+                  }}>Please log in, above.</h2>
+                </Route>
+                <Redirect to="/" />
+              </Switch>
+            </>
+        }
+      </div>
+    </Router>
   );
 }
 
